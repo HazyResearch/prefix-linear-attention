@@ -1,0 +1,2 @@
+task: based_swde_twice
+class: !function task.SWDETwice

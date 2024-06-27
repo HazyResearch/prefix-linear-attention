@@ -1,0 +1,2 @@
+task: based_fda_twice
+class: !function task.FDATwice

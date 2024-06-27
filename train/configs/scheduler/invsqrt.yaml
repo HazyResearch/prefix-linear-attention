@@ -1,0 +1,7 @@
+# @package train.scheduler
+<<<<<<< HEAD
+_target_: src.optim.lr_scheduler.InvSqrt
+=======
+_target_: train.optim.lr_scheduler.InvSqrt
+>>>>>>> 14e2c07dac7baad5b003027fe7050c24aaa0851d
+num_warmup_steps: ???
