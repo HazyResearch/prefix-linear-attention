@@ -94,8 +94,6 @@ model:
 
     n_embd: 1792
     fixed_decay: False   
-    decay_const: -3
-    decay_denom: False
     special_initializer: true
     n_head: 16
     n_layer: 36

@@ -1,4 +1,5 @@
 # Copyright (c) 2023, Tri Dao.
+# Adapted by Simran Arora for JRT. 
 # Adapted from https://github.com/NVIDIA/Megatron-LM/blob/0bb597b42c53355a567aba2a1357cc34b9d99ddd/megatron/text_generation/forward_step.py#L31
 import gc
 import time

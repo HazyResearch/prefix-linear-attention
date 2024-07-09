@@ -4,39 +4,22 @@ import pandas as pd
 from collections import defaultdict
 
 # replace this with your path to the log files
-prefix_path = '/home/simarora/code/just-read-twice/lm-eval-harness/'
+prefix_path = '/home/simarora/code/clean/prefix-linear-attention/lm-eval-harness/'
+assert(os.path.exists(prefix_path)), print(f"Ths path {prefix_path} does not exist. Please update the ``prefix_path'' variable.")
 
 chosen_metric='contains,none'             
 tasks = {
         "based_swde": chosen_metric,
-        # 'based_fda':chosen_metric, 
+        'based_fda':chosen_metric, 
         'based_triviaqa': chosen_metric,
         "based_squad": chosen_metric,
-        # "based_drop": chosen_metric,
+        "based_drop": chosen_metric,
         "based_nq_512": chosen_metric,
         "based_nq_1024": chosen_metric,
         "based_nq_2048": chosen_metric,
 }
 
 output_dir="run_jrt_rnn_sweep"
-output_dir="0612-test-models"
-output_dir="0616_run_local"
-# output_dir="0617_run_local_redo_pad_random"
-# output_dir="0616_run_local_no_slide_mask"
-# output_dir='0617_run_local_default'
-# output_dir="0617_run_local_hybrid"
-# output_dir="0617_sanity"
-# output_dir="0617_sanity_randn"
-# output_dir="0617_sanity_no_mask"
-output_dir="0617_sanity_no_mask_precision"
-output_dir="0617_sanity_no_mask_no_precision_repeats"
-
-# output_dir="0619_sanity_base_pad"
-output_dir="0619_sanity_base_pad_noLA_mask"
-# output_dir="0619_sanity_base_pad_LA_and_SWA_mask"
-# output_dir="0619_quick"
-# output_dir="0619_quick2"
-# output_dir="0620_1b_superglue_fs5"
 extra = ""
 full_sweep = False
 

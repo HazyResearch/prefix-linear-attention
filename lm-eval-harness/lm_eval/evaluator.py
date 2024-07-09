@@ -414,10 +414,13 @@ def evaluate(
 
         # run requests through models
         local_keys = ['based', 'attn', 'l6874f6j', 'jrt']
-        if 'jrt' in model_name.lower(): # and 'bert' not in model_name.lower():
+        if 'jrt' in model_name.lower(): 
+            # for the prefix linear attention models
             decode_mode = "default_left_pad"
         else:
+            # for decoder only models
             decode_mode = "default"
+        print(f"Using {decode_mode} decoding -- for JRT-Models want to use default_left_pad")
         if any(k in model_name.lower() for k in local_keys) and 'hazy' in model_name.lower():
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 with torch.no_grad():

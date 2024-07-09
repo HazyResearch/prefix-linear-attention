@@ -212,10 +212,9 @@ class SequenceLMModel(SequenceModel):
             # adjust preds and labels
             B, L, C = output.shape
 
-            # We only want to evaluate after enc_length
+            # how long is the non-causal encoder region?
             if self.enc_length is None:  enc_length = L // 2
             else: enc_length = self.enc_length
-            # if var_enc_length is not None: enc_length = var_enc_length
             output_dec = output[:, enc_length:, :]
 
             # loss
@@ -224,10 +223,8 @@ class SequenceLMModel(SequenceModel):
             y_dec = rearrange(y_dec, '... -> (...)')
             loss_ntp = self.loss_fn(output_dec, y_dec) if is_train else self.loss_fn_val(output_dec, y_dec)
 
-            # preds
-            # preds_dec = output_dec.argmax(dim=-1)
-
             if self.data_type == 'mixed':
+                """ Add MLM Loss """ 
                 output_enc = output[:, :enc_length, :]
                 output_enc = rearrange(output_enc, '... C -> (...) C')
                 y_enc = y[:, :enc_length]
@@ -236,31 +233,16 @@ class SequenceLMModel(SequenceModel):
                 masked_y_enc = y_enc.flatten()[masked_token_idx]
                 loss_mlm = self.loss_fn(masked_output_enc, masked_y_enc) if is_train else self.loss_fn_val(masked_output_enc, masked_y_enc)
 
-                if self.loss_combination == 'sum':
-                    # Simple sum: https://github.com/huggingface/transformers/blob/9fe3f585bb4ea29f209dc705d269fbe292e1128f/src/transformers/models/bert/modeling_bert.py#L1111
-                    loss = loss_ntp + loss_mlm
-                elif self.loss_combination == 'weighted_sum':
-                    mlm_weight = self.cfg.mlm_weight
-                    loss = ((1 - mlm_weight) * loss_ntp) + (mlm_weight * loss_mlm)
-                elif self.loss_combination == 'partial_weighted':
-                    mlm_weight = self.cfg.mlm_weight
-                    loss_mlm = loss_mlm * mlm_weight
-                    loss = loss_ntp + loss_mlm 
-                elif self.loss_combination == "flexible_weighted": 
-                    mlm_weight = self.cfg.mlm_weight
-                    ntp_weight = self.cfg.ntp_weight
-                    loss_mlm = loss_mlm * mlm_weight
-                    loss_ntp = loss_ntp * ntp_weight
-                    loss = loss_ntp + loss_mlm 
-                else:
-                    raise ValueError(f"Invalid loss combination: {self.loss_combination}")
-                
+                mlm_weight = self.cfg.mlm_weight
+                loss_mlm = loss_mlm * mlm_weight
+                loss = loss_ntp + loss_mlm 
                 partial_losses = {
                     "total_loss": loss,
                     "nwp_loss": loss_ntp,
                     "mlm_loss": loss_mlm,
                 }
             else:
+                """ Like standard PrefixLM """
                 loss = loss_ntp
                 partial_losses = None
 
@@ -273,7 +255,6 @@ class SequenceLMModel(SequenceModel):
         metrics = getattr(self, f'{phase}_metrics')
         metrics(output, targets, loss=loss)
         log_on_step = 'eval' in self.cfg and self.cfg.eval.get('log_on_step', False) and phase == 'train'
-        # print(f"{batch_idx=},{loss=},{self.trainer.global_step=}")
         self.log(f"{phase}/loss", loss, on_step=log_on_step, on_epoch=True,
                  prog_bar=False, sync_dist=True)
 

@@ -30,14 +30,11 @@ class NeoxLMDataModule(LightningDataModule):
         seed: int = 42,
 
         use_mlm_loss: bool = False,
-        type_of_mlm_loss: str = "default",
         mlm_probability: float = 0.15,
         enc_length: int = 512,
         mask_token_id: int = 50263, 
         pad_token_id: int = 50256,
         sep_token_id: int = 50257,
-        add_padding: bool = False,
-        mask_prob: float = 0,
         **kwargs
     ):
         super().__init__()
@@ -55,14 +52,11 @@ class NeoxLMDataModule(LightningDataModule):
         self.indices = range(10)
 
         self.use_mlm_loss = use_mlm_loss
-        self.type_of_mlm_loss = type_of_mlm_loss
         self.mlm_probability = mlm_probability
         self.enc_length = enc_length
         self.mask_token_id = mask_token_id
-        self.add_padding = add_padding
         self.pad_token_id = pad_token_id
         self.sep_token_id = sep_token_id
-        self.mask_prob = mask_prob
 
     def prepare_data(self, stage=None):
         # SE: `prepare_data` is only run on the main process (unlike setup) -- this is important 
@@ -86,14 +80,11 @@ class NeoxLMDataModule(LightningDataModule):
             skip_warmup=True,
 
             use_mlm_loss=self.use_mlm_loss,
-            type_of_mlm_loss=self.type_of_mlm_loss,
             mlm_probability=self.mlm_probability,
             enc_length=self.enc_length,
             mask_token_id=self.mask_token_id,
-            add_padding=self.add_padding,
             sep_token_id=self.sep_token_id,
             pad_token_id=self.pad_token_id,
-            mask_prob=self.mask_prob,
         )
     
     def setup(self, stage=None):
@@ -156,14 +147,11 @@ def build_datasets(
     build_index_mappings=True,
 
     use_mlm_loss: bool = False,
-    type_of_mlm_loss: str = "default",
     mlm_probability: float = 0.15,
     enc_length: int = 512,
     mask_token_id: int = 50263,
-    add_padding: bool = False,
     pad_token_id: int = 50256,
     sep_token_id: int = 50257,
-    mask_prob: float = 0,
 ):
     # build individual datasets
     datasets = {}
@@ -181,14 +169,11 @@ def build_datasets(
                 source_index=i,
 
                 use_mlm_loss=use_mlm_loss,
-                type_of_mlm_loss=type_of_mlm_loss,
                 mlm_probability=mlm_probability,
                 enc_length=enc_length,
                 mask_token_id=mask_token_id,
-                add_padding=add_padding,
                 pad_token_id=pad_token_id,
                 sep_token_id=sep_token_id,
-                mask_prob=mask_prob,
             )
             datasets[split].append(dataset)  
     return datasets
@@ -206,14 +191,11 @@ def build_dataset(
     source_index=None, 
 
     use_mlm_loss: bool = False,
-    type_of_mlm_loss: str = "default",
     mlm_probability: float = 0.15,
     enc_length: int = 512,
     mask_token_id: int = 50263,
-    add_padding: bool = False,
     pad_token_id: int = 50256,
     sep_token_id: int = 50257,
-    mask_prob: float = 0,
 ):
     """Build train/valid/test datasets."""
 
@@ -237,14 +219,11 @@ def build_dataset(
         source_index=source_index, 
 
         use_mlm_loss=use_mlm_loss,
-        type_of_mlm_loss=type_of_mlm_loss,
         mlm_probability=mlm_probability,
         enc_length=enc_length,
         mask_token_id=mask_token_id,
-        add_padding=add_padding,
         pad_token_id=pad_token_id,
         sep_token_id=sep_token_id,
-        mask_prob=mask_prob,
     )
 
     return dataset
@@ -266,14 +245,11 @@ class GPT2Dataset(torch.utils.data.Dataset):
         source_index: int = None,
 
         use_mlm_loss: bool = False,
-        type_of_mlm_loss: str = "default",
         mlm_probability: float = 0.15,
         enc_length: int = 512,
         mask_token_id: int = 50263,
-        add_padding: bool = False,
         pad_token_id: int = 50256,
         sep_token_id: int = 50257,
-        mask_prob: float = 0,
     ):
         self.name = name
         self.data_prefix = data_prefix
@@ -282,14 +258,11 @@ class GPT2Dataset(torch.utils.data.Dataset):
 
         # MLM
         self.use_mlm_loss = use_mlm_loss
-        self.type_of_mlm_loss = type_of_mlm_loss
         self.mlm_probability = mlm_probability
         self.enc_length = enc_length
         self.mask_token_id = mask_token_id
-        self.add_padding = add_padding
         self.pad_token_id = pad_token_id
         self.sep_token_id = sep_token_id
-        self.mask_prob = mask_prob
 
         # Checks
         assert np.min(documents) >= 0
@@ -373,7 +346,6 @@ class GPT2Dataset(torch.utils.data.Dataset):
             seq_length = len(inputs)
             mask = np.ones(seq_length)
             orig_labels = labels.copy()
-            unmasked_sample = sample.copy()
 
             if self.use_mlm_loss:
                 # https://github.com/huggingface/transformers/blob/a3aabc702e1c49243e7b48f22d88362d50e786c5/src/transformers/data/data_collator.py#L782
@@ -387,48 +359,7 @@ class GPT2Dataset(torch.utils.data.Dataset):
                 labels = np.concatenate([enc_labels, dec_labels])
 
                 # mask the input
-                if self.type_of_mlm_loss == "default":
-                    inputs[:self.enc_length][masked_indices.numpy()] = self.mask_token_id
-                elif self.type_of_mlm_loss == "bert":
-                    # https://github.com/huggingface/transformers/blob/eed9ed679878ada2f6d2eefccdbda368cabc88b1/src/transformers/data/data_collator.py#L1096
-                    # 80% mask token
-                    indices_replaced = torch.bernoulli(torch.full(enc_labels.shape, 0.8)).bool() & masked_indices
-                    inputs[:self.enc_length][indices_replaced] = self.mask_token_id
-                    # 10% random token
-                    indices_random = torch.bernoulli(torch.full(enc_labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
-                    random_words = torch.randint(50256, enc_labels.shape, dtype=torch.long)
-                    inputs[:self.enc_length][indices_random] = random_words[indices_random]
-                    # 10% keep the original token
-                    # do nothing
-
-            if self.add_padding:
-                # select an amount of padding tokens to add
-                # construct p that skew towards no padding
-                pad_region = self.enc_length//2
-                p = [1/(i+1) for i in range(pad_region)]
-                total = sum(p)
-                p = [i/total for i in p]
-                padding_length = np.random.choice(pad_region, p=p)
-
-                # add padding tokens and shift the input right
-                inputs = np.concatenate([
-                    np.ones(padding_length) * self.pad_token_id, 
-                    inputs
-                ])
-                labels = np.concatenate([
-                    np.ones(padding_length) * -100, # Don't compute loss on padding 
-                    labels
-                ])
-                mask = np.concatenate([
-                    np.zeros(padding_length), 
-                    np.ones(seq_length)
-                ])
-
-                # truncate the input and labels
-                inputs = inputs[:seq_length]
-                labels = labels[:seq_length]
-                mask = mask[:seq_length]
-                enc_labels[:padding_length] = -100
+                inputs[:self.enc_length][masked_indices.numpy()] = self.mask_token_id
                 
             # make sure inputs and labels are Long, Int
             inputs = torch.tensor(inputs, dtype=torch.long)

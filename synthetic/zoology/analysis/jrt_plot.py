@@ -20,8 +20,6 @@ def plot(
     df['Model'] = new_key
     df['log_state_size'] = np.log(df['state_size'])
     df = df[df['state'] == 'finished']
-    df = df[df['model.d_model'] > 40]
-    df = df[df[state_key] < 200000]
 
     # Group metrics by slices
     # metrics = [k for k in df.columns if 'valid/length_slice/' in k]
@@ -113,79 +111,12 @@ def plot(
 if __name__ == "__main__" :
     tag = ''
     launch_id=[
-            # 0508: Original runs
+            # 0508: Original runs (2 causal seeds, 2 non causal seeds)
             "default-2024-05-08-18-30-37",
             "default-2024-05-08-18-31-29",
-            # "default-2024-05-09-01-26-53",
-            # "default-2024-05-09-03-49-26",
+            "default-2024-05-09-01-26-53",
+            "default-2024-05-09-03-49-26",
         ]
-
-    # tag = 'new_'
-    # launch_id=[
-    #         # 0610: Code release runs on new repo
-    #         "default-2024-06-07-03-32-47",
-    #         "default-2024-06-10-06-48-38",
-    #     ]
-
-    # More seeds on the old repo
-    # tag = 'new2_'
-    # launch_id=[
-    #         "default-2024-06-13-00-53-34", # seed 123
-    #         "default-2024-06-12-16-37-01", # seed 123
-    #         # "default-2024-06-13-11-14-14", # seed 2
-    #         # "default-2024-06-13-13-39-20", # seed 2
-    #         # "default-2024-06-13-14-35-30", # seed 10 causal
-    #         # "default-2024-06-13-20-57-48", # seed 10 non-causal
-    #     ]
-    
-    # Runs at 2 layers
-    # tag = 'new3_'
-    # launch_id = [
-    #     "default-2024-06-13-16-34-45",
-    #     "default-2024-06-13-19-50-56"
-    # ]
-
-    # Runs at 6 layers
-    # tag = 'new4_'
-    # launch_id = [
-    #     'default-2024-06-14-14-45-55',
-    #     'default-2024-06-14-14-40-31',
-    #     # 'default-2024-06-14-19-00-15',
-    # ]
-
-    launch_id = [
-        "default-2024-06-15-11-16-51",  # smaller vocab (1600)
-        "default-2024-06-15-11-17-32",
-
-        # "default-2024-06-15-15-22-50",  # larger vocab (4096)
-        # "default-2024-06-15-15-22-54"
-    ]
-
-    # launch_id = [
-    #     # "default-2024-06-17-16-06-23", # (causal) improved precision
-    #     # "default-2024-06-17-16-05-09", # (non-causal)
-
-    #     # "default-2024-06-15-15-22-54",  # (causal)
-    #     # "default-2024-06-15-15-22-50",  # (non-causal) larger vocab (4096)
-
-    #     # "default-2024-06-17-20-21-25",
-    #     # "default-2024-06-17-20-21-37",
-    # ]
-
-    launch_id = [
-        "default-2024-06-18-00-22-15",
-        "default-2024-06-18-15-14-28",
-
-        # "default-2024-06-18-00-23-26",
-        # "default-2024-06-15-15-22-54",  # (causal)
-        # "default-2024-06-18-00-25-47",
-    ]
-
-    launch_id = [
-        "default-2024-06-20-17-04-21",
-        "default-2024-06-20-17-04-03",
-    ]
-
 
     df = fetch_wandb_runs(
         launch_id=launch_id,

@@ -775,14 +775,21 @@ class HFLM(LM):
         stopping_criteria = stop_sequences_criteria(
             self.tokenizer, stop, context.shape[1], context.shape[0]
         )
-        return self.model.generate(
-            input_ids=context,
-            max_length=max_length,
-            # stopping_criteria=stopping_criteria,
-            # pad_token_id=self.tokenizer.pad_token_id,
-            # use_cache=True,
-            **generation_kwargs,
-        )
+        try:
+            return self.model.generate(
+                input_ids=context,
+                max_length=max_length,
+                # stopping_criteria=stopping_criteria,
+                # pad_token_id=self.tokenizer.pad_token_id,
+                # use_cache=True,
+                **generation_kwargs,
+            )
+        except:
+            # flash attention install isn't compatible
+            return self.model.generate(
+                input_ids=context,
+                max_length=max_length,
+            )
 
     def _select_cont_toks(self, logits, contlen=None, inplen=None):
         if self.AUTO_MODEL_CLASS == transformers.AutoModelForCausalLM:

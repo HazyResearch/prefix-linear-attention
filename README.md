@@ -3,7 +3,7 @@
 
 **Just read twice: closing the recall gap for recurrent language models.**
 
-[![arXiv](https://img.shields.io/badge/arXiv-2402.18668-b31b1b.svg)](https://arxiv.org/abs/2402.18668)
+[![arXiv](https://img.shields.io/badge/arXiv-2402.18668-b31b1b.svg)](https://arxiv.org/abs/2407.05483)
 [![GitHub](https://img.shields.io/github/license/HazyResearch/meerkat)](https://img.shields.io/github/license/HazyResearch/meerkat)
 
 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-sm.svg)](https://huggingface.co/collections/hazyresearch/jrt-666296fb18c35a31a3c364b9) 
@@ -19,9 +19,9 @@ This is part of a line of research in understanding the key quality-efficiency t
 
 - [Zoology](https://arxiv.org/abs/2312.04927) explores the tradeoffs around **input-dependent sequence mixing** and the **model dimension** (efficiency) needed to perform recall. 
 - [Based](https://arxiv.org/abs/2402.18668) explores the tradeoffs around varying the **recurrent state size** for *causal* linear attention models. Increasing state size increases the  GPU memory requirements during inference, but boosts recall quality. 
-- [Just read twice]() explores going **beyond causal language modeling** to help recurrent models better decide what to store in the fixed-memory state.
+- [Just read twice](https://arxiv.org/abs/2407.05483) explores going **beyond causal language modeling** to help recurrent models better decide what to store in the fixed-memory state.
 
-Attention drastically outperforms prior subquadratic LMs at recall. We use our understanding of these tradeoffs to design new methods. The Based architecture extended the Pareto frontier of the throughput-recall tradeoff space beyond its predecessor subquadratic models. This work presents two methods, a new prompting strategy JRT-Prompt and a new architecture JRT-RNN (included in the figure below), to further close the recall gap to attention!
+Attention outperforms prior subquadratic LMs by large margins at associative recall. We use our understanding of these tradeoffs to design new methods. The Based architecture extends the Pareto frontier of the throughput-recall tradeoff space beyond prior autoregressive causl subquadratic LMs. This work presents two methods, a new prompting strategy JRT-Prompt and a new architecture JRT-RNN (included in the figure below), to further close the recall gap to attention!
 
 <div align="center" >
     <img src="assets/banner_jrt.png" height=240 alt="" style="margin-bottom:px"/> 
@@ -43,15 +43,29 @@ Attention drastically outperforms prior subquadratic LMs at recall. We use our u
 We recommend using a clean environment. 
 
 ```bash
-# clone the repository
-git clone git@github.com:HazyResearch/just-read-twice.git
-cd just-read-twice
+conda create -n dev python=3.9
 
-# install torch
-pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118 
+# clone the repository
+git clone git@github.com:HazyResearch/prefix-linear-attention.git
+cd prefix-linear-attention
+
+# install torch (matching your CUDA installation)
+pip3 install torch torchvision torchaudio
 
 # install package
+pip install packaging
 pip install -e .
+
+# install flash linear attention
+git clone https://github.com/sustcsonglin/flash-linear-attention.git
+pip install -U git+https://github.com/sustcsonglin/flash-linear-attention
+
+# pretraining kernel installs
+git clone https://github.com/Dao-AILab/flash-attention.git
+cd flash-attention/
+cd csrc/layer_norm && pip install -e . && cd ../../
+cd csrc/rotary && pip install -e . && cd ../../
+cd csrc/fused_dense_lib && pip install -e . && cd ../../
 ```
 
 ## Just read twice prompting
@@ -64,7 +78,7 @@ cd lm-eval-harness
 pip install -e .
 ```
 
-To reproduce Table 1 in our ArXiv, you can use the following scripts. In the scripts, enter an ```output_directory``` name.
+To reproduce Table 1 in our ArXiv, you can use the following scripts. In the scripts, enter an ```output_directory``` name. The code will automatically download datasets and pre-trained models from Huggingface for evaluation. 
 ```bash
 bash prompt_scripts/run_jrt_prompt_hf.sh
 bash prompt_scripts/run_jrt_prompt_hazy.sh
@@ -123,65 +137,15 @@ model = MambaLMHeadModel.from_pretrained_hf("hazyresearch/mamba-1b-50b").to("cud
 
 ## Just read twice recurrent model training
 
-To get setup:
-```bash
-# install train extra dependencies
-pip install -e .[train]
-
-# if it complains about pytorch-cuda mismatches,  comment out the line that checks, which is in the apex/setup.py file
-git clone https://github.com/NVIDIA/apex
-cd apex
-pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
-
-# CUDA kernel installs
-git clone https://github.com/Dao-AILab/flash-attention.git
-cd flash-attention/
-cd csrc/layer_norm && pip install -e . && cd ..
-cd csrc/rotary && pip install -e . && cd ..
-cd csrc/fused_dense_lib && pip install -e . && cd ..
-```
-
-Train a new model as follows, where you can change ```trainer.devices``` depending on the number of GPUs you have in your node:
-```bash
-cd train/
-python run.py experiment=reference/jrt-1b-50b trainer.devices=8
-```
-
-Here, ```reference/jrt-1b-50b``` is an **experiment** configuration file for data, architecture, and optimization located at ```train/configs/experiment/reference/```. Modify it to your needs.
-
-To swap the training dataset, (1) create a new config like ```train/config/datamodules/wikitext103.yaml``` for your dataset by swapping the dataset names etc., and (2) replace the ```wikitext103``` (for ```override datamodule```) in the **experiment** config to your filename.
-
-Be sure to update the checkpointing directory [in the config](https://github.com/HazyResearch/based/blob/3fb009b8216b41d14ea3a2ab9552a5c609ef0bf4/train/configs/experiment/example/based-360m.yaml#L39) prior to launching training.
+Follow the instructions at ```train/README.md``` to explore training. [Prefix linear attention (PLA) implementation](https://github.com/HazyResearch/prefix-linear-attention/blob/8bd8da08c777f64fddf17c792c8a16ddccf92131/based/models/mixers/prefix_linear_attention.py#L193).
 
 ## Synthetics 
 
-The following instructions are for reproducing the set disjointness synthetic results. 
-
-To get setup:
-```bash
-git submodule init
-git submodule update
-cd zoology/
-pip install -e .
-```
-
-To produce figure 2 from our ArXiv, run the following. Note that the ```-p``` leads the sweep to parallelize across your GPUs. If you're debugging / don't want to parallelize, remove the flag. 
-```bash
-# causal based
-python zoology/launch.py zoology/experiments/arxiv24_jrt_figure2/causal_sweep.py -p
-
-# non-causal based
-python zoology/launch.py zoology/experiments/arxiv24_jrt_figure2/non_causal_sweep.py -p
-```
-
-Plotting the figure. We use WandB to help pull down metrics and plot. To use this method, find the ```launch_id``` values on WandB for the sweeps you've launched and add them to the list of launch_id's in the following python file. Then run:
-```bash
-python zoology/experiments/arxiv24_jrt_figure2/plot.py
-```
+Follow the instructions at ```synthetics/README.md``` to explore the set disjointness synthetic.
 
 ## Benchmarking
 
-The following instructions are for comparing the JRT prefill speed to competitive baselines. The Based and JRT-RNN kernels will run on an NVidia H100 GPU since they exploit new features.
+The following instructions are for comparing the JRT prefill speed to competitive baselines. The Based and JRT-RNN kernels will run on an NVidia H100 GPU since they exploit new hardware features (e.g., TMA, warpgroup ops).
 
 To get setup:
 ```bash
@@ -192,10 +156,10 @@ cd ThunderKittens/
 source env.src
 ```
 
-***Profiling***  We include several benchmarks in our profiling file. If you want to exclude any, you can modify the imports and the ```methods``` dictionary in the python file, to filter to the subset you care about. You can then choose which kernels to install below:
+If you want to exclude any of the basaelines, you can modify the imports and the ```methods``` dictionary in the python file, to filter to the subset you care about. You can then choose which kernels to install below:
 ```bash
 # 1. based tk kernel setup
-cd examples/jrt/H100/
+cd examples/based/prefix_lin_attn/H100/
 python prefill_setup.py install
 
 # 2. jrt-rnn tk kernel setup
@@ -216,17 +180,8 @@ pip install flash-attn
 
 To profile and evaluate the correctness of these kernels against PyTorch:
 ```bash
-cd ThunderKittens/examples/jrt/
+cd ThunderKittens/examples/based/prefix_lin_attn/
 python lin_attn_profile.py
-```
-
-***Demo*** We next provide a demo for running the speedy 💨 TK kernels in our end-to-end pretrained models! 
-```bash
-cd just-read-twice/
-pip install -e .
-cd benchmark/
-python generate_based.py
-python generate_jrt.py
 ```
 
 ## Citations and acknowledgements

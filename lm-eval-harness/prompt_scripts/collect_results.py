@@ -4,7 +4,8 @@ import pandas as pd
 from collections import defaultdict
 
 # replace this with your path
-prefix_path = '/var/cr05_data/sim_data/code/just-read-twice/lm-eval-harness/'
+prefix_path = '/home/simarora/code/clean/prefix-linear-attention/lm-eval-harness'
+assert(os.path.exists(prefix_path)), print(f"Ths path {prefix_path} does not exist. Please update the ``prefix_path'' variable.")
 
 chosen_metric='contains,none'             
 tasks = {
@@ -47,7 +48,7 @@ def collect_results():
 
             data_paths = []
             if any(['https' in e for e in entities]): continue
-            if any('hazy' in e for e in entities):
+            if any('hazy' in e for e in entities) and len(entities) == 1:
                 try:
                     wandb_path = f"{prefix_path}/{output_dir}/{extra}/{timestamp}/hazy-research/"
                     wandb_items = os.listdir(wandb_path)
@@ -70,7 +71,7 @@ def collect_results():
                 for model in models:
                     path = f"{data_path}/{model}"
                     task_path = f"{path}/{task}/"
-                    
+
                     # For the scores
                     try:
                         result_file = f'results.json'
